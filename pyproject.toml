@@ -1,0 +1,17 @@
+[project]
+name = "job-application-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.22.1",
+    "beautifulsoup4>=4.15.0",
+    "fastapi>=0.139.2",
+    "fastapi-users[sqlalchemy]>=15.0.5",
+    "pypdf2>=3.0.1",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "requests>=2.34.2",
+    "uvicorn>=0.51.0",
+]

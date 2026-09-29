@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Application Agent</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f7fa; color: #1a1a2e; min-height: 100vh; display: flex; justify-content: center; padding: 40px 16px; }
+  .container { width: 100%; max-width: 640px; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 24px; text-align: center; color: #0f3460; }
+
+  .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #333; }
+
+  .tab-bar { display: flex; gap: 0; margin-bottom: 16px; }
+  .tab-bar button { flex: 1; padding: 10px; border: 1px solid #d0d5dd; background: #f9fafb; cursor: pointer; font-size: 14px; font-weight: 500; color: #667085; transition: all .15s; }
+  .tab-bar button:first-child { border-radius: 8px 0 0 8px; }
+  .tab-bar button:last-child { border-radius: 0 8px 8px 0; }
+  .tab-bar button.active { background: #0f3460; color: #fff; border-color: #0f3460; }
+
+  label { display: block; font-size: 13px; font-weight: 500; color: #344054; margin-bottom: 4px; }
+  input[type="email"], input[type="password"], input[type="url"], textarea { width: 100%; padding: 10px 12px; border: 1px solid #d0d5dd; border-radius: 8px; font-size: 14px; outline: none; transition: border .15s; font-family: inherit; }
+  input:focus, textarea:focus { border-color: #0f3460; box-shadow: 0 0 0 2px rgba(15,52,96,.12); }
+  textarea { resize: vertical; min-height: 80px; }
+  .field { margin-bottom: 14px; }
+
+  .toggle-link { font-size: 13px; color: #0f3460; cursor: pointer; text-decoration: underline; margin-top: 4px; display: inline-block; }
+  .hidden { display: none; }
+
+  .file-input-wrap { position: relative; }
+  .file-input-wrap input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .file-input-wrap .file-label { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed #d0d5dd; border-radius: 8px; font-size: 14px; color: #667085; cursor: pointer; transition: border .15s; }
+  .file-input-wrap .file-label:hover { border-color: #0f3460; }
+  .file-input-wrap .file-label.has-file { border-style: solid; border-color: #0f3460; color: #1a1a2e; }
+
+  button.primary { width: 100%; padding: 12px; background: #0f3460; color: #fff; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s; }
+  button.primary:hover { background: #16213e; }
+  button.primary:disabled { background: #98a2b3; cursor: not-allowed; }
+
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+  .badge.strong { background: #d1fae5; color: #065f46; }
+  .badge.partial { background: #fef3c7; color: #92400e; }
+  .badge.weak { background: #fee2e2; color: #991b1b; }
+
+  .result-section { margin-top: 16px; }
+  .result-section h3 { font-size: 14px; font-weight: 600; color: #333; margin-bottom: 6px; }
+  .result-section p, .result-section li { font-size: 14px; color: #555; line-height: 1.6; }
+  .result-section ul { padding-left: 20px; }
+  .result-section .cover-text { background: #f9fafb; border-radius: 8px; padding: 12px; white-space: pre-wrap; font-size: 13px; line-height: 1.6; border: 1px solid #e5e7eb; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .status-msg { color: #555; font-size: 13px; margin-top: 8px; }
+  .error-msg { color: #991b1b; font-size: 13px; margin-top: 6px; }
+  .success-msg { color: #065f46; font-size: 13px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Job Application Agent</h1>
+
+  <div class="card" id="auth-card">
+    <div class="tab-bar">
+      <button id="tab-login" class="active" onclick="switchAuthTab('login')">Login</button>
+      <button id="tab-register" onclick="switchAuthTab('register')">Register</button>
+    </div>
+    <div id="auth-form">
+      <div class="field">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" autocomplete="current-password">
+      </div>
+      <button class="primary" id="auth-btn" onclick="handleAuth()">Login</button>
+      <p id="auth-msg"></p>
+    </div>
+  </div>
+
+  <div class="card hidden" id="app-card">
+    <h2>Job Description</h2>
+    <div class="field">
+      <label for="job-url">Job posting URL</label>
+      <input type="url" id="job-url" placeholder="https://example.com/jobs/...">
+    </div>
+    <span class="toggle-link" id="toggle-paste" onclick="togglePaste()">or paste job description instead</span>
+    <div class="field hidden" id="paste-area">
+      <label for="job-text">Paste job description</label>
+      <textarea id="job-text" rows="6" placeholder="Paste the full job description here..."></textarea>
+    </div>
+
+    <h2 style="margin-top:20px">Resume</h2>
+    <div class="field">
+      <label for="resume-file">Upload PDF resume</label>
+      <div class="file-input-wrap">
+        <input type="file" id="resume-file" accept=".pdf" onchange="onFileSelect(event)">
+        <div class="file-label" id="file-label">Choose a PDF file...</div>
+      </div>
+    </div>
+
+    <button class="primary" id="analyze-btn" onclick="handleAnalyze()" disabled>Analyze Application</button>
+    <p id="analyze-msg" class="status-msg"></p>
+  </div>
+
+  <div class="card hidden" id="results-card">
+    <h2>Results</h2>
+    <div id="results-content"></div>
+  </div>
+</div>
+
+<script>
+let token = null;
+let authMode = 'login';
+
+function switchAuthTab(mode) {
+  authMode = mode;
+  document.getElementById('tab-login').className = mode === 'login' ? 'active' : '';
+  document.getElementById('tab-register').className = mode === 'register' ? 'active' : '';
+  document.getElementById('auth-btn').textContent = mode === 'login' ? 'Login' : 'Register';
+}
+
+async function handleAuth() {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+  const msgEl = document.getElementById('auth-msg');
+  msgEl.className = '';
+  msgEl.textContent = '';
+  if (!email || !password) { msgEl.className = 'error-msg'; msgEl.textContent = 'Email and password are required.'; return; }
+
+  const btn = document.getElementById('auth-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>' + (authMode === 'login' ? 'Logging in...' : 'Registering...');
+
+  try {
+    if (authMode === 'register') {
+      const r = await fetch('/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Registration failed'); }
+    }
+    const r = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'username=' + encodeURIComponent(email) + '&password=' + encodeURIComponent(password) });
+    if (!r.ok) { const d = await r.json(); throw new Error(d.detail || 'Login failed'); }
+    const data = await r.json();
+    token = data.access_token;
+
+    document.getElementById('auth-card').classList.add('hidden');
+    document.getElementById('app-card').classList.remove('hidden');
+    document.getElementById('auth-msg').textContent = '';
+  } catch (e) {
+    msgEl.className = 'error-msg';
+    msgEl.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Login' : 'Register';
+  }
+}
+
+function togglePaste() {
+  const area = document.getElementById('paste-area');
+  const url = document.getElementById('job-url');
+  const link = document.getElementById('toggle-paste');
+  const hidden = area.classList.toggle('hidden');
+  link.textContent = hidden ? 'or paste job description instead' : 'use URL instead';
+  if (!hidden) { url.value = ''; } else { document.getElementById('job-text').value = ''; }
+}
+
+function onFileSelect(e) {
+  const label = document.getElementById('file-label');
+  const btn = document.getElementById('analyze-btn');
+  label.textContent = e.target.files.length ? e.target.files[0].name : 'Choose a PDF file...';
+  label.className = 'file-label' + (e.target.files.length ? ' has-file' : '');
+  btn.disabled = !e.target.files.length;
+}
+
+function friendlyError(step, status, detail) {
+  if (status === 401) return 'Login expired, please log in again.';
+  if (step === 'fetch-job') return 'Could not fetch job posting — ' + (detail || 'try pasting the description instead.');
+  if (step === 'parse-resume') return 'Could not read resume — ' + (detail || 'make sure the file is a valid PDF.');
+  if (step === 'analyze') return 'Analysis failed — ' + (detail || 'please try again.');
+  return detail || 'An unexpected error occurred.';
+}
+
+async function handleAnalyze() {
+  const msgEl = document.getElementById('analyze-msg');
+  const resultsEl = document.getElementById('results-content');
+  const resultsCard = document.getElementById('results-card');
+  resultsCard.classList.add('hidden');
+  msgEl.className = 'status-msg';
+
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+
+  const url = document.getElementById('job-url').value.trim();
+  const manualText = document.getElementById('job-text').value.trim();
+  const pasteHidden = document.getElementById('paste-area').classList.contains('hidden');
+
+  let jobText;
+
+  try {
+    if (!pasteHidden && manualText) {
+      jobText = manualText;
+    } else if (url) {
+      msgEl.textContent = 'Fetching job posting...';
+      const r1 = await fetch('/agent/fetch-job', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+      if (!r1.ok) { const d1 = await r1.json().catch(() => ({})); throw { step: 'fetch-job', status: r1.status, detail: d1.detail }; }
+      jobText = (await r1.json()).content;
+    } else {
+      throw { step: 'fetch-job', status: 0, detail: 'Provide a URL or paste a job description.' };
+    }
+  } catch (e) {
+    msgEl.className = 'error-msg';
+    msgEl.textContent = friendlyError(e.step || 'fetch-job', e.status, e.detail);
+    btn.disabled = false;
+    btn.textContent = 'Analyze Application';
+    return;
+  }
+
+  const fileInput = document.getElementById('resume-file');
+  if (!fileInput.files.length) {
+    msgEl.className = 'error-msg';
+    msgEl.textContent = 'Upload a resume PDF.';
+    btn.disabled = false;
+    btn.textContent = 'Analyze Application';
+    return;
+  }
+
+  let resumeText;
+  try {
+    msgEl.textContent = 'Parsing resume...';
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    const r2 = await fetch('/agent/parse-resume', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, body: formData });
+    if (!r2.ok) { const d2 = await r2.json().catch(() => ({})); throw { step: 'parse-resume', status: r2.status, detail: d2.detail }; }
+    resumeText = (await r2.json()).content;
+  } catch (e) {
+    msgEl.className = 'error-msg';
+    msgEl.textContent = friendlyError(e.step || 'parse-resume', e.status, e.detail);
+    btn.disabled = false;
+    btn.textContent = 'Analyze Application';
+    return;
+  }
+
+  try {
+    msgEl.textContent = 'Analyzing match...';
+    const r3 = await fetch('/agent/analyze', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }, body: JSON.stringify({ job_text: jobText, resume_text: resumeText }) });
+    if (!r3.ok) { const d3 = await r3.json().catch(() => ({})); throw { step: 'analyze', status: r3.status, detail: d3.detail }; }
+    const result = await r3.json();
+
+    renderResults(result);
+    resultsCard.classList.remove('hidden');
+    msgEl.className = 'status-msg';
+    msgEl.textContent = '';
+  } catch (e) {
+    msgEl.className = 'error-msg';
+    msgEl.textContent = friendlyError(e.step || 'analyze', e.status, e.detail);
+    btn.disabled = false;
+    btn.textContent = 'Analyze Application';
+    return;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Analyze Application';
+}
+
+function renderResults(data) {
+  let html = '';
+
+  const levelClass = data.match_level === 'strong' ? 'strong' : data.match_level === 'partial' ? 'partial' : 'weak';
+  html += '<p><span class="badge ' + levelClass + '">' + data.match_level + '</span></p>';
+  html += '<div class="result-section"><h3>Reasoning</h3><p>' + escapeHtml(data.reasoning || '') + '</p></div>';
+
+  if (data.cover_letter) {
+    html += '<div class="result-section"><h3>Cover Letter</h3><div class="cover-text">' + escapeHtml(data.cover_letter) + '</div></div>';
+  }
+
+  if (data.rewritten_bullets && data.rewritten_bullets.length) {
+    html += '<div class="result-section"><h3>Rewritten Bullet Points</h3><ul>';
+    data.rewritten_bullets.forEach(function(b) { html += '<li>' + escapeHtml(b) + '</li>'; });
+    html += '</ul></div>';
+  }
+
+  if (data.gap_advice) {
+    html += '<div class="result-section"><h3>Gap Advice</h3><p>' + escapeHtml(data.gap_advice) + '</p></div>';
+  }
+
+  document.getElementById('results-content').innerHTML = html;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>
